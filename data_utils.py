@@ -9,6 +9,7 @@ import commons
 from mel_processing import spectrogram_torch
 from utils import load_wav_to_torch, load_filepaths_and_text
 from text import text_to_sequence, cleaned_text_to_sequence
+import torchaudio
 
 
 class TextAudioLoader(torch.utils.data.Dataset):
@@ -64,6 +65,10 @@ class TextAudioLoader(torch.utils.data.Dataset):
 
     def get_audio(self, filename):
         audio, sampling_rate = load_wav_to_torch(filename)
+        if sampling_rate != 22050:
+            resample_transform = torchaudio.transforms.Resample(orig_freq=sampling_rate, new_freq=22050)
+            audio = resample_transform(audio)
+            sampling_rate = 22050
         if sampling_rate != self.sampling_rate:
             raise ValueError("{} {} SR doesn't match target {} SR".format(
                 sampling_rate, self.sampling_rate))
@@ -319,11 +324,11 @@ class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
             idx_bucket = self._bisect(length)
             if idx_bucket != -1:
                 buckets[idx_bucket].append(i)
-  
-        for i in range(len(buckets) - 1, 0, -1):
-            if len(buckets[i]) == 0:
-                buckets.pop(i)
-                self.boundaries.pop(i+1)
+
+        for i in range(len(buckets) - 2, -1, -1):
+          if len(buckets[i]) == 0:
+              buckets.pop(i)
+              self.boundaries.pop(i+1)
   
         num_samples_per_bucket = []
         for i in range(len(buckets)):
@@ -355,6 +360,9 @@ class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
   
           # add extra samples to make it evenly divisible
           rem = num_samples_bucket - len_bucket
+          # print("BALLS BALLS BALLS", self.buckets)
+          # print("BALLS BALLS BALLS", self.lengths)
+          # print("BALLS BALLS BALLS", len(self.lengths), "\n")
           ids_bucket = ids_bucket + ids_bucket * (rem // len_bucket) + ids_bucket[:(rem % len_bucket)]
   
           # subsample
