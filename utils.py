@@ -21,7 +21,9 @@ def load_checkpoint(checkpoint_path, model, optimizer=None):
   iteration = checkpoint_dict['iteration']
   learning_rate = checkpoint_dict['learning_rate']
   if optimizer is not None:
-    optimizer.load_state_dict(checkpoint_dict['optimizer'])
+    optimizer_state = checkpoint_dict['optimizer']
+    if optimizer_state is not None:
+      optimizer.load_state_dict(optimizer_state)
   saved_state_dict = checkpoint_dict['model']
   if hasattr(model, 'module'):
     state_dict = model.module.state_dict()
